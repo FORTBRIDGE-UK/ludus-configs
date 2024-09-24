@@ -16,7 +16,7 @@ ludus:
           - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
             role: badsectorlabs.ludus_elastic_container
     role_vars:
-      ludus_elastic_password: "barcelona"
+      ludus_elastic_password: "Passw0rd!"
   - vm_name: "{{ range_id }}-NHA-DC01"
     hostname: "{{ range_id }}-DC01"
     template: win2019-server-x64-template
