@@ -1,0 +1,166 @@
+ludus:
+  - vm_name: "{{ range_id }}-elastic"
+    hostname: "{{ range_id }}-elastic"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 1
+    ram_gb: 8
+    cpus: 4
+    linux: true
+    testing:
+      snapshot: false
+      block_internet: true
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+    role_vars:
+      ludus_elastic_password: "barcelona"
+  - vm_name: "{{ range_id }}-NHA-DC01"
+    hostname: "{{ range_id }}-DC01"
+    template: win2019-server-x64-template
+    vlan: 10
+    ip_last_octet: 30
+    ram_gb: 4
+    cpus: 2
+    windows:
+      sysprep: true
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-NHA-DC02"
+    hostname: "{{ range_id }}-DC02"
+    template: win2019-server-x64-template
+    vlan: 10
+    ip_last_octet: 31
+    ram_gb: 4
+    cpus: 2
+    windows:
+      sysprep: true
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-NHA-SRV01"
+    hostname: "{{ range_id }}-SRV01"
+    template: win2019-server-x64-template
+    vlan: 10
+    ip_last_octet: 32
+    ram_gb: 4
+    cpus: 2
+    windows:
+      sysprep: true
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-NHA-SRV02"
+    hostname: "{{ range_id }}-SRV02"
+    template: win2019-server-x64-template
+    vlan: 10
+    ip_last_octet: 33
+    ram_gb: 4
+    cpus: 2
+    windows:
+      sysprep: true
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-NHA-SRV03"
+    hostname: "{{ range_id }}-SRV03"
+    template: win2019-server-x64-template
+    vlan: 10
+    ip_last_octet: 34
+    ram_gb: 4
+    cpus: 2
+    windows:
+      sysprep: true
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-redirector-1"
+    hostname: "redirector-1"
+    template: ubuntu-22.04-x64-server-template
+    vlan: 100
+    ip_last_octet: 100
+    ram_gb: 1
+    cpus: 2
+    linux: true
+  - vm_name: "{{ range_id }}-frontgun"
+    hostname: "frontgun"
+    template: ubuntu-22.04-x64-server-template
+    vlan: 100
+    ip_last_octet: 100
+    ram_gb: 2
+    cpus: 2
+    linux: true
+  - vm_name: "{{ range_id }}-win10-RTO"
+    hostname: "{{ range_id }}-ATTACKER"
+    template: win10-21h2-x64-enterprise-template
+    vlan: 5
+    ip_last_octet: 60
+    ram_gb: 8
+    cpus: 4
+    windows:
+      install_additional_tools: true
+  - vm_name: "{{ range_id }}-teamserver"
+    hostname: "teamserver"
+    template: ubuntu-22.04-x64-server-template
+    vlan: 5
+    ip_last_octet: 50
+    ram_gb: 4
+    cpus: 2
+    linux: true
+
+network:
+  inter_vlan_default: REJECT
+  always_blocked_networks:   # Define any networks that ranges should never be able to reach (i.e. the LAN where the Ludus host is located)
+    - 172.16.1.0/24
+    - 192.168.1.0/24
+  rules:
+    - name: Allow windows to all open net
+      vlan_src: 10
+      vlan_dst: 100
+      protocol: all
+      ports: all
+      action: ACCEPT
+    - name: Allow kali to all open net
+      vlan_src: 5
+      vlan_dst: 100
+      protocol: all
+      ports: all
+      action: ACCEPT
+    - name: Allow open net to all windows
+      vlan_src: 100
+      vlan_dst: 10
+      protocol: all
+      ports: all
+      action: ACCEPT
+    - name: Allow open net to all kali
+      vlan_src: 100
+      vlan_dst: 5
+      protocol: all
+      ports: all
+      action: ACCEPT
+
+defaults:
+  router_vm_name: "{{ range_id }}-router-debian11-x64" # The name of the router VM deployed by Ludus
+  snapshot_with_RAM: true                  # When entering testing mode, capture the RAM state which allows reverting to a running VM
+  stale_hours: 0                           # How many hours until a pre-existing snapshot should be deleted and retaken (if entering and exiting testing mode quickly)
+  ad_domain_functional_level: Win2012R2    # The functional level of each Windows domain created by Ludus - options are: "Win2003", "Win2008", "Win2008R2", "Win2012", "Win2012R2", or "WinThreshold"
+  ad_forest_functional_level: Win2012R2    # The functional level of each Windows forest created by Ludus - options are: "Win2003", "Win2008", "Win2008R2", "Win2012", "Win2012R2", or "WinThreshold"
+  ad_domain_admin: domainadmin             # The domain admin username for every Windows domain
+  ad_domain_admin_password: password       # The domain admin password for every Windows domain
+  ad_domain_user: domainuser               # The domain user username for every Windows domain
+  ad_domain_user_password: password        # The domain user password for every Windows domain
+  ad_domain_safe_mode_password: password
+  timezone: Europe/London
