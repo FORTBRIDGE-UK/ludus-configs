@@ -1,0 +1,154 @@
+ludus:
+  - vm_name: "{{ range_id }}-elastic"
+    hostname: "{{ range_id }}-elastic"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 1
+    ram_gb: 8
+    cpus: 4
+    linux: true
+    testing:
+      snapshot: false
+      block_internet: true
+    roles:
+      - badsectorlabs.ludus_elastic_container
+    role_vars:
+      ludus_elastic_password: "Passw0rd!"
+  - vm_name: "{{ range_id }}-DC01"
+    hostname: "DC01"
+    template: win2019-server-x64-template
+    vlan: 10
+    ip_last_octet: 2
+    ram_gb: 8
+    cpus: 4
+    windows:
+      sysprep: true
+    domain:
+      fqdn: acme.corp
+      role: primary-dc
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-SRV01"
+    hostname: "SRV01"
+    template: win2022-server-x64-template
+    vlan: 10
+    ip_last_octet: 12
+    ram_gb: 8
+    cpus: 2
+    windows:
+      sysprep: true
+    domain:
+      fqdn: acme.corp
+      role: member
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-win11-wkstn01"
+    hostname: "WKSTN01"
+    template: win11-22h2-x64-enterprise-template
+    vlan: 10
+    ip_last_octet: 21
+    ram_gb: 8
+    cpus: 4
+    windows:
+      install_additional_tools: false
+      office_version: 2019
+    domain:
+      fqdn: acme.corp
+      role: member
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-win10-wkstn02"
+    hostname: "WKSTN02"
+    template: win10-21h2-x64-enterprise-template
+    vlan: 10
+    ip_last_octet: 22
+    ram_gb: 8
+    cpus: 4
+    windows:
+      install_additional_tools: false
+      office_version: 2019
+    domain:
+      fqdn: acme.corp
+      role: member
+    roles:
+      - name: badsectorlabs.ludus_elastic_agent
+        depends_on:
+          - vm_name: "{{ range_id }}-elastic"  # In this case, we have to set up the elastic container (server) before the agent
+            role: badsectorlabs.ludus_elastic_container
+  - vm_name: "{{ range_id }}-win10-RTO"
+    hostname: "ATTACKER"
+    template: win10-21h2-x64-enterprise-template
+    vlan: 99
+    ip_last_octet: 10
+    ram_gb: 8
+    cpus: 4
+    windows:
+      install_additional_tools: true
+      chocolatey_ignore_checksums: false
+      office_version: 2019        # The Microsoft office version you would like installed on this VM (2013|2016|2019|2021). Default: undefined (don't install office)
+      office_arch: 64bit          # The architecture for the Microsoft office install (64bit|32bit)
+      visual_studio_version: 2019
+  - vm_name: "{{ range_id }}-kali"
+    hostname: "{{ range_id }}-kali"
+    template: kali-x64-desktop-template
+    vlan: 99
+    ip_last_octet: 1
+    ram_gb: 8
+    cpus: 4
+    linux: true
+    testing:
+      snapshot: false
+      block_internet: false
+
+network:
+  inter_vlan_default: REJECT
+  always_blocked_networks:   # Define any networks that ranges should never be able to reach (i.e. the LAN where the Ludus host is located)
+    - 172.16.1.0/24
+    - 192.168.1.0/24
+  rules:
+    - name: Only allow windows to kali on 443
+      vlan_src: 10
+      vlan_dst: 99
+      protocol: tcp
+      ports: 443
+      action: ACCEPT
+    - name: Only allow windows to kali on 80
+      vlan_src: 10
+      vlan_dst: 99
+      protocol: tcp
+      ports: 80
+      action: ACCEPT
+    - name: Only allow windows to kali on 8080
+      vlan_src: 10
+      vlan_dst: 99
+      protocol: tcp
+      ports: 8080
+      action: ACCEPT          
+    - name: Allow kali to all windows
+      vlan_src: 99
+      vlan_dst: 10
+      protocol: all
+      ports: all
+      action: ACCEPT
+
+defaults:
+  router_vm_name: "{{ range_id }}-router-debian11-x64" # The name of the router VM deployed by Ludus
+  snapshot_with_RAM: true                  # When entering testing mode, capture the RAM state which allows reverting to a running VM
+  stale_hours: 0                           # How many hours until a pre-existing snapshot should be deleted and retaken (if entering and exiting testing mode quickly)
+  ad_domain_functional_level: Win2012R2    # The functional level of each Windows domain created by Ludus - options are: "Win2003", "Win2008", "Win2008R2", "Win2012", "Win2012R2", or "WinThreshold"
+  ad_forest_functional_level: Win2012R2    # The functional level of each Windows forest created by Ludus - options are: "Win2003", "Win2008", "Win2008R2", "Win2012", "Win2012R2", or "WinThreshold"
+  ad_domain_admin: domainadmin             # The domain admin username for every Windows domain
+  ad_domain_admin_password: password       # The domain admin password for every Windows domain
+  ad_domain_user: domainuser               # The domain user username for every Windows domain
+  ad_domain_user_password: password        # The domain user password for every Windows domain
+  ad_domain_safe_mode_password: password
+  timezone: Europe/London
