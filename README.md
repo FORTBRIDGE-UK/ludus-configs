@@ -5,7 +5,7 @@
 #### Elastic AD Range
 
 - Unconfigured Active Directory `acme.corp` with DC, SRV, win-11 WKSTN01 and win-10 WKSTN02 machines installed with elastic agent. Only has 80, 8080 and 443 port access to Red Team network.
-- Red Team network with Windows 10 and Kali workstations that hass full access to Active directory network.
+- Red Team network with Windows 10 and Kali workstations that has full access to Active directory network.
 
 #### NHA Elastic Range
 
